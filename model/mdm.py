@@ -101,6 +101,8 @@ class MDM(nn.Module):
     def load_and_freeze_clip(self, clip_version):
         clip_model, clip_preprocess = clip.load(clip_version, device='cpu',
                                                 jit=False)  # Must set jit=False for training
+        # clip.model.convert_weights(
+        #     clip_model)  # Actually this line is unnecessary since clip by default already on float16
 
         # Freeze CLIP weights
         clip_model.eval()
@@ -134,6 +136,7 @@ class MDM(nn.Module):
             # print('texts after pad', texts.shape, texts)
         else:
             texts = clip.tokenize(raw_text, truncate=True).to(device) # [bs, context_length] # if n_tokens > 77 -> will truncate
+
         return self.clip_model.encode_text(texts).float()
 
     def forward(self, x, timesteps, y=None):
@@ -141,6 +144,8 @@ class MDM(nn.Module):
         x: [batch_size, njoints, nfeats, max_frames], denoted x_t in the paper
         timesteps: [batch_size] (int)
         """
+        assert (y is not None) == (self.cond_mode != 'no_cond'
+                                   ), "must specify y if and only if the model is class-conditional"
         bs, njoints, nfeats, nframes = x.shape
         emb = self.embed_timestep(timesteps)  # [1, bs, d]
 
